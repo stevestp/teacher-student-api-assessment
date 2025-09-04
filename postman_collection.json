@@ -1,0 +1,249 @@
+{
+    "info": {
+        "name": "Teacher-Student API",
+        "description": "Complete API collection for testing teacher-student administrative functions",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "version": "1.0.0"
+    },
+    "item": [
+        {
+            "name": "Health Check",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/health",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "health"
+                    ]
+                },
+                "description": "Check if the API is healthy and running"
+            },
+            "response": []
+        },
+        {
+            "name": "API Statistics",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/stats",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "stats"
+                    ]
+                },
+                "description": "Get API usage statistics"
+            },
+            "response": []
+        },
+        {
+            "name": "Register Students to Teacher",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"teacher\": \"teacherken@gmail.com\",\n  \"students\": [\n    \"studentjon@gmail.com\",\n    \"studenthon@gmail.com\"\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/register",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "register"
+                    ]
+                },
+                "description": "Register one or more students to a teacher"
+            },
+            "response": []
+        },
+        {
+            "name": "Register More Students",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"teacher\": \"teacherjoe@gmail.com\",\n  \"students\": [\n    \"studentjon@gmail.com\",\n    \"studentbob@gmail.com\"\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/register",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "register"
+                    ]
+                },
+                "description": "Register students to another teacher for testing common students"
+            },
+            "response": []
+        },
+        {
+            "name": "Get Common Students - Single Teacher",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/commonstudents?teacher=teacherken@gmail.com",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "commonstudents"
+                    ],
+                    "query": [
+                        {
+                            "key": "teacher",
+                            "value": "teacherken@gmail.com"
+                        }
+                    ]
+                },
+                "description": "Get all students registered to a single teacher"
+            },
+            "response": []
+        },
+        {
+            "name": "Get Common Students - Multiple Teachers",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/commonstudents?teacher=teacherken@gmail.com&teacher=teacherjoe@gmail.com",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "commonstudents"
+                    ],
+                    "query": [
+                        {
+                            "key": "teacher",
+                            "value": "teacherken@gmail.com"
+                        },
+                        {
+                            "key": "teacher",
+                            "value": "teacherjoe@gmail.com"
+                        }
+                    ]
+                },
+                "description": "Get students common to multiple teachers"
+            },
+            "response": []
+        },
+        {
+            "name": "Suspend Student",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"student\": \"studenthon@gmail.com\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/suspend",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "suspend"
+                    ]
+                },
+                "description": "Suspend a student from receiving notifications"
+            },
+            "response": []
+        },
+        {
+            "name": "Retrieve Notification Recipients - With Mentions",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"teacher\": \"teacherken@gmail.com\",\n  \"notification\": \"Hello students! @studentagnes@gmail.com @studentmiche@gmail.com\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/retrievefornotifications",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "retrievefornotifications"
+                    ]
+                },
+                "description": "Get students who can receive notifications with @mentions"
+            },
+            "response": []
+        },
+        {
+            "name": "Retrieve Notification Recipients - No Mentions",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"teacher\": \"teacherken@gmail.com\",\n  \"notification\": \"Hey everybody\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/retrievefornotifications",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "retrievefornotifications"
+                    ]
+                },
+                "description": "Get students who can receive notifications without mentions"
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000",
+            "description": "Base URL for the API"
+        }
+    ]
+}
