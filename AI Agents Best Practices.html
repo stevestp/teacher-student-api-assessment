@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="slides-format" content="viewport">
+    <title>AI Agents Best Practices - FPT Software</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Motion CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/motion@12/dist/motion.js"></script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            --color-bg: #0a0f1e;
+            --color-bg-deep: #050814;
+            --color-surface: #1a1f2e;
+            --color-text: #f1f5f9;
+            --color-text-secondary: #cbd5e1;
+            --color-text-muted: #94a3b8;
+            --color-accent-1: #3b82f6;
+            --color-accent-2: #06b6d4;
+            --color-accent-3: #8b5cf6;
+            --color-glass-bg: rgba(255,255,255,0.06);
+            --color-glass-border: rgba(255,255,255,0.08);
+            --color-vignette: rgba(0,0,0,0.4);
+            --font-display: 'Instrument Serif', serif;
+            --font-body: 'Inter', sans-serif;
+        }
+    </style>
+
+    <style>
+        :root { --color-bg: #0a0f1e; --color-text: #f1f5f9; --glow-color-rgb: 59,130,246; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { background: var(--color-bg); margin: 0; }
+        body { font-family: var(--font-body); color: var(--color-text); overflow: hidden; height: 100vh; width: 100vw; }
+        .deck { width: 100vw; height: 100vh; position: relative; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--color-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transform: scale(0.95); transition: opacity 0.7s ease, transform 0.7s ease; pointer-events: none; overflow: hidden; }
+        .slide.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .slide > .content { position: relative; z-index: 2; width: 100%; max-width: 1100px; padding: clamp(1.5rem, 4vw, 4rem); }
+        .nav-controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; z-index: 100; background: var(--color-glass-bg); backdrop-filter: blur(10px); padding: 10px 24px; border-radius: 40px; border: 1px solid var(--color-glass-border); }
+        .nav-btn { width: 40px; height: 40px; border: none; background: var(--color-glass-bg); color: var(--color-accent-1); border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
+        .nav-btn:hover { background: var(--color-glass-border); }
+        .slide-dots { display: flex; gap: 8px; }
+        .slide-dots .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-glass-border); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .slide-dots .dot.active { background: var(--color-accent-1); transform: scale(1.3); }
+        .slide-counter { font-size: 0.8rem; color: var(--color-text-muted); min-width: 40px; text-align: center; }
+        .reveal { opacity: 0; transform: translateY(20px); }
+
+        .text-glow { text-shadow: 0 0 20px rgba(var(--glow-color-rgb), 0.5), 0 0 40px rgba(var(--glow-color-rgb), 0.2); }
+        .stat-glow { text-shadow: 0 0 30px rgba(var(--glow-color-rgb), 0.6), 0 0 60px rgba(var(--glow-color-rgb), 0.25); }
+        @keyframes glow-pulse {
+            0%, 100% { text-shadow: 0 0 20px rgba(var(--glow-color-rgb), 0.5), 0 0 40px rgba(var(--glow-color-rgb), 0.2); }
+            50% { text-shadow: 0 0 30px rgba(var(--glow-color-rgb), 0.8), 0 0 60px rgba(var(--glow-color-rgb), 0.3); }
+        }
+        .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+        @keyframes float-slow {
+            0% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(60px, -50px) scale(1.12); }
+            50% { transform: translate(-40px, 40px) scale(0.9); }
+            75% { transform: translate(50px, 20px) scale(1.08); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes float-drift {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+            33% { transform: translate(-50px, -60px) scale(1.15) rotate(3deg); }
+            66% { transform: translate(40px, 30px) scale(0.88) rotate(-2deg); }
+            100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .gradient-mesh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float-slow 10s ease-in-out infinite; }
+        .blob:nth-child(2) { animation: float-drift 14s ease-in-out infinite; }
+        .blob:nth-child(3) { animation: float-slow 18s ease-in-out infinite reverse; }
+
+        .slide::before {
+            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            background-repeat: repeat; background-size: 256px 256px; opacity: 0.03; mix-blend-mode: overlay;
+        }
+        .slide::after {
+            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 50%, var(--color-vignette) 100%);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+        }
+
+        /* Slide-specific styles */
+        .slide-7 .diagram-container {
+            background: var(--color-glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--color-glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .slide-7 .diagram-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        
+        .slide-11 .mistake-card {
+            background: var(--color-glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--color-glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border-left: 4px solid var(--color-accent-1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .slide-11 .mistake-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+        }
+        .slide-11 .mistake-number {
+            background: linear-gradient(135deg, var(--color-accent-1), var(--color-accent-2));
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="mouse-spotlight" style="position:fixed;inset:0;z-index:99;pointer-events:none;"></div>
+
+<div class="deck">
+    <!-- SLIDE 1: Title -->
+    <div class="slide slide-1 active" data-slide="1">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 500px; height: 500px; top: -100px; right: -100px; background: var(--color-accent-1); opacity: 0.15;"></div>
+            <div class="blob" style="width: 300px; height: 300px; bottom: -80px; left: -60px; background: var(--color-accent-2); opacity: 0.12;"></div>
+            <div class="blob" style="width: 200px; height: 200px; top: 40%; left: 15%; background: var(--color-accent-3); opacity: 0.1;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position: absolute; inset: 0; z-index: 1;"></canvas>
+        <div class="content text-center">
+            <div class="text-[120px] mb-5 animate-[float_3s_ease-in-out_infinite]">🤖</div>
+            <h1 class="font-display text-[clamp(2.5rem,6vw,5rem)] font-black bg-linear-to-br from-accent-1 via-accent-2 to-accent-1 bg-clip-text text-transparent tracking-tight mb-4 reveal">AI Agents Best Practices</h1>
+            <p class="text-[clamp(0.9rem,1.5vw,1.4rem)] font-light text-text-muted tracking-[6px] uppercase reveal">Maximize Your Productivity with GitHub Copilot & AI Tools</p>
+            <p class="text-sm mt-8 text-text-muted reveal">FPT Software • March 2026</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: Agenda -->
+    <div class="slide slide-2" data-slide="2">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">Session Agenda</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">🎯</div>
+                    <h3 class="text-xl font-semibold mb-2 text-accent-1">AI Agents Ecosystem</h3>
+                    <p class="text-sm text-text-secondary">GitHub Copilot, Cursor, Perplexity, ChatGPT</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">⚙️</div>
+                    <h3 class="text-xl font-semibold mb-2 text-accent-1">How AI Agents Work</h3>
+                    <p class="text-sm text-text-secondary">Architecture & mechanisms behind the tools</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">💡</div>
+                    <h3 class="text-xl font-semibold mb-2 text-accent-1">Best Practices</h3>
+                    <p class="text-sm text-text-secondary">Prompt engineering & effective usage</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">⚠️</div>
+                    <h3 class="text-xl font-semibold mb-2 text-accent-1">Common Mistakes</h3>
+                    <p class="text-sm text-text-secondary">Pitfalls that reduce AI effectiveness</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: What are AI Agents? -->
+    <div class="slide slide-3" data-slide="3">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">What are AI Agents?</h2>
+            <p class="text-lg text-text-secondary mb-8 reveal">AI agents are intelligent systems that understand context, make decisions, and take actions to help you accomplish tasks more efficiently.</p>
+            <div class="grid grid-cols-3 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🧠</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Context Understanding</h3>
+                    <p class="text-sm text-text-muted">Analyzes your code, workspace, and intent</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🎯</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Autonomous Actions</h3>
+                    <p class="text-sm text-text-muted">Generates code, suggests fixes, writes docs</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🔄</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Iterative Learning</h3>
+                    <p class="text-sm text-text-muted">Adapts to your feedback and patterns</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: AI Tools Ecosystem -->
+    <div class="slide slide-4" data-slide="4">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">AI Tools Ecosystem</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-8 border-l-4 border-l-accent-1 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-2xl font-bold mb-3 text-accent-1">💻 Coding Assistants</h3>
+                    <ul class="space-y-2 text-text-secondary">
+                        <li><strong>GitHub Copilot</strong> - Inline code suggestions, chat</li>
+                        <li><strong>Cursor</strong> - AI-first code editor</li>
+                        <li><strong>Tabnine</strong> - Privacy-focused completions</li>
+                    </ul>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-8 border-l-4 border-l-accent-2 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-2xl font-bold mb-3 text-accent-2">💬 AI Chat Platforms</h3>
+                    <ul class="space-y-2 text-text-secondary">
+                        <li><strong>Perplexity AI</strong> - Research & citations</li>
+                        <li><strong>ChatGPT</strong> - General problem solving</li>
+                        <li><strong>Gemini</strong> - Google's multimodal AI</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: GitHub Copilot Overview -->
+    <div class="slide slide-5" data-slide="5">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">GitHub Copilot</h2>
+            <p class="text-lg text-text-secondary mb-8 reveal">AI pair programmer that helps you write code faster with autocomplete-style suggestions</p>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 text-center reveal">
+                    <div class="text-4xl font-bold text-accent-1 stat-glow mb-2" data-count="55">0</div>
+                    <div class="text-sm text-text-muted uppercase tracking-wider">% Code Faster</div>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 text-center reveal">
+                    <div class="text-4xl font-bold text-accent-1 stat-glow mb-2" data-count="46">0</div>
+                    <div class="text-sm text-text-muted uppercase tracking-wider">% Accept Rate</div>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 text-center reveal">
+                    <div class="text-4xl font-bold text-accent-1 stat-glow mb-2" data-count="88">0</div>
+                    <div class="text-sm text-text-muted uppercase tracking-wider">% Feel Productive</div>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 text-center reveal">
+                    <div class="text-4xl font-bold text-accent-1 stat-glow mb-2" data-count="74">0</div>
+                    <div class="text-sm text-text-muted uppercase tracking-wider">% Less Frustrated</div>
+                </div>
+            </div>
+            <p class="text-xs text-text-muted mt-6 text-center reveal">Source: GitHub Developer Survey 2024</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: Copilot Features -->
+    <div class="slide slide-6" data-slide="6">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">Core Capabilities</h2>
+            <div class="grid grid-cols-3 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">⚡</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Code Completion</h3>
+                    <p class="text-sm text-text-muted">Real-time suggestions as you type</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">💬</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Chat Interface</h3>
+                    <p class="text-sm text-text-muted">Ask questions about your code</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🔧</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Inline Chat</h3>
+                    <p class="text-sm text-text-muted">Refactor and fix directly in editor</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🤖</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Agent Mode</h3>
+                    <p class="text-sm text-text-muted">Multi-file edits & complex tasks</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🔌</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Extensions & MCP</h3>
+                    <p class="text-sm text-text-muted">Integrate external tools seamlessly</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🧪</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Test Generation</h3>
+                    <p class="text-sm text-text-muted">Create unit tests automatically</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: How AI Agents Work -->
+    <div class="slide slide-7" data-slide="7">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">How Copilot Works</h2>
+            <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 mb-6 reveal">
+                <img src="https://github.blog/wp-content/uploads/2025/05/how-it-works.png?w=768" alt="GitHub Copilot Architecture Diagram" style="width: 100%; border-radius: 8px; margin-bottom: 1rem;" />
+                <p class="text-sm text-text-muted text-center">Copilot processes your code context to generate intelligent suggestions</p>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">📥</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Context Input</h3>
+                    <p class="text-sm text-text-muted">Code, comments, file names</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">🤖</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-2">AI Processing</h3>
+                    <p class="text-sm text-text-muted">GPT-4 analyzes patterns</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">💡</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-3">Smart Output</h3>
+                    <p class="text-sm text-text-muted">Contextual suggestions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7B: Copilot Extension Ecosystem -->
+    <div class="slide slide-7b" data-slide="7b">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">Copilot Extensions & MCP</h2>
+            <p class="text-lg text-text-secondary mb-6 reveal">Extend Copilot's power by connecting external tools directly in your chat</p>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-1 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-accent-1">🔌 Copilot Extensions</h3>
+                    <p class="text-sm text-text-secondary mb-3">Connect APIs, databases, and services to Copilot Chat</p>
+                    <ul class="space-y-2 text-sm text-text-muted">
+                        <li>• Query Jira tickets without leaving VS Code</li>
+                        <li>• Search company documentation</li>
+                        <li>• Access internal APIs and tools</li>
+                    </ul>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-2 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-accent-2">🌐 MCP Protocol</h3>
+                    <p class="text-sm text-text-secondary mb-3">Build once, use everywhere (Copilot, Claude, etc.)</p>
+                    <ul class="space-y-2 text-sm text-text-muted">
+                        <li>• 44+ ready-to-use servers in registry</li>
+                        <li>• Playwright, Terraform, GitHub API</li>
+                        <li>• Open standard for AI integrations</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="bg-surface/30 rounded-xl p-5 mt-6 border-l-4 border-accent-3 reveal">
+                <p class="text-sm text-text-secondary"><strong class="text-accent-3">💡 Real Example:</strong> Ask "@github What PRs are waiting for my review?" or "@docs Find authentication examples" directly in Copilot Chat</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: Best Practices Overview -->
+    <div class="slide slide-8" data-slide="8">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <canvas class="particle-canvas-ambient" style="position: absolute; inset: 0; z-index: 1;"></canvas>
+        <div class="content text-center">
+            <h2 class="font-display text-[clamp(2.5rem,5vw,4rem)] font-bold mb-6 bg-linear-to-br from-accent-1 via-accent-2 to-accent-1 bg-clip-text text-transparent reveal">Best Practices</h2>
+            <p class="text-xl text-text-secondary reveal">5 principles to maximize AI agent effectiveness</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: Prompt Engineering -->
+    <div class="slide slide-9" data-slide="9">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">1. Master Prompt Engineering</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-red-500 reveal">
+                    <h3 class="text-lg font-semibold mb-3 text-red-400">❌ Vague Prompts</h3>
+                    <div class="bg-surface/50 rounded p-3 mb-2 font-mono text-sm">
+                        <code class="text-text-muted">"Fix the bug"</code>
+                    </div>
+                    <div class="bg-surface/50 rounded p-3 font-mono text-sm">
+                        <code class="text-text-muted">"Make it better"</code>
+                    </div>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-green-500 reveal">
+                    <h3 class="text-lg font-semibold mb-3 text-green-400">✅ Specific Prompts</h3>
+                    <div class="bg-surface/50 rounded p-3 mb-2 font-mono text-sm">
+                        <code class="text-text-secondary">"Fix the null pointer exception in getUserData() when user is not logged in"</code>
+                    </div>
+                    <div class="bg-surface/50 rounded p-3 font-mono text-sm">
+                        <code class="text-text-secondary">"Refactor this function to use async/await instead of callbacks"</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: Context is Key -->
+    <div class="slide slide-10" data-slide="10">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">2. Provide Context</h2>
+            <div class="space-y-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-1 reveal">
+                    <h4 class="font-semibold text-accent-1 mb-2">📁 Reference Files</h4>
+                    <p class="text-sm text-text-secondary">Use <code class="bg-surface px-2 py-1 rounded">#file</code> to reference specific files in chat</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-2 reveal">
+                    <h4 class="font-semibold text-accent-2 mb-2">🎯 Select Code</h4>
+                    <p class="text-sm text-text-secondary">Highlight the relevant code section before asking questions</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-3 reveal">
+                    <h4 class="font-semibold text-accent-3 mb-2">📝 Add Instructions</h4>
+                    <p class="text-sm text-text-secondary">Create <code class="bg-surface px-2 py-1 rounded">.github/copilot-instructions.md</code> for project-wide context</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: Common Mistakes -->
+    <div class="slide slide-11" data-slide="11">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">Common Mistakes That Kill AI Performance</h2>
+            <div class="grid grid-cols-2 gap-5">
+                <div class="mistake-card reveal">
+                    <div class="mistake-number">1</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Vague or Ambiguous Requests</h3>
+                    <p class="text-sm text-text-secondary">"Fix this" → AI doesn't know what to fix, leading to generic or incorrect results</p>
+                </div>
+                <div class="mistake-card reveal">
+                    <div class="mistake-number">2</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Missing Context</h3>
+                    <p class="text-sm text-text-secondary">Not providing enough information about codebase and requirements → AI has to guess, leading to unsuitable output</p>
+                </div>
+                <div class="mistake-card reveal">
+                    <div class="mistake-number">3</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Accept Blindly</h3>
+                    <p class="text-sm text-text-secondary">Accepting code suggestions without review → Bugs, security issues, unoptimized code</p>
+                </div>
+                <div class="mistake-card reveal">
+                    <div class="mistake-number">4</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Not Iterating</h3>
+                    <p class="text-sm text-text-secondary">Asking one question then giving up when results are wrong → Need to refine prompts and ask again</p>
+                </div>
+                <div class="mistake-card reveal">
+                    <div class="mistake-number">5</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Overloading with Too Many Requests</h3>
+                    <p class="text-sm text-text-secondary">"Refactor entire module + add tests + optimize performance" → Break down into simpler tasks</p>
+                </div>
+                <div class="mistake-card reveal">
+                    <div class="mistake-number">6</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Not Customizing Settings</h3>
+                    <p class="text-sm text-text-secondary">Using default settings for every project → Need to configure per tech stack and coding style</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: Impact of Mistakes -->
+    <div class="slide slide-12" data-slide="12">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">Impact of Misusing AI Agents</h2>
+            <div class="grid grid-cols-1 gap-5">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-red-500 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-red-400">⚠️ AI misunderstands requirements</h3>
+                    <p class="text-text-secondary">Inaccurate output requires refactoring or rewriting → Takes more time than coding manually</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-orange-500 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-orange-400">⏱️ Reduced performance, slow processing</h3>
+                    <p class="text-text-secondary">AI has to "guess" context → High token usage, slow responses, sometimes timeouts</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-yellow-500 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-yellow-400">📉 Decreased code quality</h3>
+                    <p class="text-text-secondary">Unoptimized code, hidden bugs, security vulnerabilities → Increased technical debt</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-gray-500 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-400">😞 Loss of trust in AI</h3>
+                    <p class="text-text-secondary">"This AI is useless" → Return to old methods, missing 2-3x productivity opportunity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: Iterative Refinement -->
+    <div class="slide slide-13" data-slide="13">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">3. Iterate and Refine</h2>
+            <p class="text-lg text-text-secondary mb-8 reveal">AI agents learn from conversation. Don't give up after the first response.</p>
+            <ul class="space-y-4 text-lg">
+                <li class="flex gap-4 items-start reveal">
+                    <span class="text-2xl">🔄</span>
+                    <span class="text-text-secondary"><strong class="text-text">Follow up:</strong> "Can you optimize this for performance?"</span>
+                </li>
+                <li class="flex gap-4 items-start reveal">
+                    <span class="text-2xl">🎯</span>
+                    <span class="text-text-secondary"><strong class="text-text">Clarify:</strong> "Use TypeScript instead of JavaScript"</span>
+                </li>
+                <li class="flex gap-4 items-start reveal">
+                    <span class="text-2xl">📊</span>
+                    <span class="text-text-secondary"><strong class="text-text">Add constraints:</strong> "Keep function under 50 lines"</span>
+                </li>
+                <li class="flex gap-4 items-start reveal">
+                    <span class="text-2xl">✨</span>
+                    <span class="text-text-secondary"><strong class="text-text">Request alternatives:</strong> "Show me 2 other approaches"</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: Review Everything -->
+    <div class="slide slide-14" data-slide="14">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">4. Always Review AI Output</h2>
+            <div class="grid grid-cols-3 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🔍</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Logic Check</h3>
+                    <p class="text-sm text-text-muted">Does the code actually solve the problem?</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">🛡️</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Security Scan</h3>
+                    <p class="text-sm text-text-muted">Check for vulnerabilities and edge cases</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-4xl mb-4">📐</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Style Guide</h3>
+                    <p class="text-sm text-text-muted">Ensure consistency with team standards</p>
+                </div>
+            </div>
+            <div class="bg-surface/30 rounded-xl p-6 mt-6 border-l-4 border-accent-1 reveal">
+                <p class="text-text-secondary"><strong class="text-text">Remember:</strong> AI is a tool, not a replacement. You're still responsible for code quality.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 15: Real Example -->
+    <div class="slide slide-15" data-slide="15">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">Real-World Example</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 reveal">
+                    <h3 class="text-lg font-semibold mb-2 text-red-400">❌ Bad Prompt</h3>
+                    <p class="font-mono text-sm text-text-secondary">"Write a function to handle user authentication"</p>
+                </div>
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-5 reveal">
+                    <h3 class="text-lg font-semibold mb-2 text-green-400">✅ Good Prompt</h3>
+                    <p class="font-mono text-sm text-text-secondary">"Create a TypeScript function that validates JWT tokens using jsonwebtoken library. Return decoded user data if valid, throw JWTExpiredError if expired, and throw JWTInvalidError for invalid tokens. Include proper error handling and type definitions."</p>
+                </div>
+            </div>
+            <div class="mt-6 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 reveal">
+                <h4 class="font-semibold text-accent-1 mb-3">Why the second is better:</h4>
+                <ul class="space-y-2 text-sm text-text-secondary">
+                    <li>🎯 Specific language (TypeScript)</li>
+                    <li>📦 Mentions exact library (jsonwebtoken)</li>
+                    <li>✨ Defines expected behavior and error cases</li>
+                    <li>📝 Requests type definitions</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 16: Live Demo Examples -->
+    <div class="slide slide-16" data-slide="16">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">Live Demo: VS Code Copilot</h2>
+            <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 mb-6 reveal">
+                <img src="https://code.visualstudio.com/assets/docs/copilot/copilot-chat/copilot-chat-view.png" alt="GitHub Copilot Chat in VS Code" style="width: 100%; border-radius: 8px; margin-bottom: 1rem;" />
+                <p class="text-sm text-text-muted text-center">Copilot Chat interface in VS Code</p>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 hover:-translate-y-1 transition reveal">
+                    <div class="text-2xl mb-2">💬</div>
+                    <h4 class="text-sm font-semibold mb-1 text-accent-1">Chat Panel</h4>
+                    <p class="text-xs text-text-muted">Ctrl+Shift+I</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 hover:-translate-y-1 transition reveal">
+                    <div class="text-2xl mb-2">✏️</div>
+                    <h4 class="text-sm font-semibold mb-1 text-accent-2">Inline Chat</h4>
+                    <p class="text-xs text-text-muted">Ctrl+I</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 hover:-translate-y-1 transition reveal">
+                    <div class="text-2xl mb-2">⚡</div>
+                    <h4 class="text-sm font-semibold mb-1 text-accent-3">Quick Chat</h4>
+                    <p class="text-xs text-text-muted">Ctrl+Shift+Alt+L</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 17: Practical Examples -->
+    <div class="slide slide-17" data-slide="17">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-6 reveal">Hands-On Examples</h2>
+            <div class="space-y-5">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-1 reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-accent-1">🔧 Example 1: Refactor Code</h3>
+                    <div class="bg-surface/50 rounded p-4 mb-3">
+                        <p class="text-sm text-text-secondary mb-2"><strong>Select code →</strong> Ctrl+I →</p>
+                        <code class="text-sm text-accent-2">"Refactor this to use async/await and add error handling"</code>
+                    </div>
+                    <p class="text-xs text-text-muted">✨ Copilot rewrites the selected code inline</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-2 reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-accent-2">🧪 Example 2: Generate Tests</h3>
+                    <div class="bg-surface/50 rounded p-4 mb-3">
+                        <p class="text-sm text-text-secondary mb-2"><strong>In Chat Panel →</strong></p>
+                        <code class="text-sm text-accent-1">"/tests for #getUserProfile function with edge cases"</code>
+                    </div>
+                    <p class="text-xs text-text-muted">✨ Copilot generates Jest/Mocha tests automatically</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-3 reveal">
+                    <h3 class="text-xl font-semibold mb-3 text-accent-3">🐛 Example 3: Fix Bug</h3>
+                    <div class="bg-surface/50 rounded p-4 mb-3">
+                        <p class="text-sm text-text-secondary mb-2"><strong>Select error code →</strong></p>
+                        <code class="text-sm text-purple-400">"/fix TypeError: Cannot read property 'name' of undefined"</code>
+                    </div>
+                    <p class="text-xs text-text-muted">✨ Copilot suggests null checks and defensive code</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 18: Advanced Tips -->
+    <div class="slide slide-18" data-slide="18">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">Advanced Tips & Tricks</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">📚</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Slash Commands</h3>
+                    <p class="text-sm text-text-secondary mb-3">Quick actions in Copilot Chat</p>
+                    <code class="bg-surface px-2 py-1 rounded text-xs">/fix /explain /tests /doc</code>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">🎨</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Code Style Guides</h3>
+                    <p class="text-sm text-text-secondary mb-3">Project-wide instructions</p>
+                    <code class="bg-surface px-2 py-1 rounded text-xs">.github/copilot-instructions.md</code>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">🔗</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Reference Symbols</h3>
+                    <p class="text-sm text-text-secondary mb-3">Context from your codebase</p>
+                    <code class="bg-surface px-2 py-1 rounded text-xs">#file #symbol @workspace</code>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <div class="text-3xl mb-3">🎯</div>
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">Agent Participants</h3>
+                    <p class="text-sm text-text-secondary mb-3">Specialized agents</p>
+                    <code class="bg-surface px-2 py-1 rounded text-xs">@workspace @terminal @vscode</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 19: Key Takeaways -->
+    <div class="slide slide-19" data-slide="19">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">Key Takeaways</h2>
+            <div class="space-y-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-1 reveal">
+                    <h3 class="text-xl font-semibold mb-2 text-accent-1">1. Be Specific</h3>
+                    <p class="text-text-secondary">Clear, detailed prompts get better results</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-2 reveal">
+                    <h3 class="text-xl font-semibold mb-2 text-accent-2">2. Provide Context</h3>
+                    <p class="text-text-secondary">Use file references, workspace context, and instructions</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-accent-3 reveal">
+                    <h3 class="text-xl font-semibold mb-2 text-accent-3">3. Iterate</h3>
+                    <p class="text-text-secondary">Refine and improve through conversation</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 border-l-4 border-l-purple-500 reveal">
+                    <h3 class="text-xl font-semibold mb-2 text-purple-400">4. Review Everything</h3>
+                    <p class="text-text-secondary">You're responsible for the final code quality</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 20: Recommendations -->
+    <div class="slide slide-20" data-slide="20">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <canvas class="particle-canvas-ambient" style="position: absolute; inset: 0; z-index: 1;"></canvas>
+        <div class="content text-center">
+            <h2 class="font-display text-[clamp(2.5rem,5vw,4rem)] font-bold mb-6 bg-linear-to-br from-accent-1 via-accent-2 to-accent-1 bg-clip-text text-transparent reveal">Recommendations</h2>
+            <p class="text-xl text-text-secondary mb-8 reveal">Action items to implement immediately</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 21: Learning Resources -->
+    <div class="slide slide-21" data-slide="21">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 350px; height: 350px; top: -80px; right: -80px; background: var(--color-accent-1); opacity: 0.08;"></div>
+            <div class="blob" style="width: 250px; height: 250px; bottom: -60px; left: -40px; background: var(--color-accent-2); opacity: 0.06;"></div>
+        </div>
+        <div class="content">
+            <h2 class="font-display text-[clamp(2rem,4.5vw,3rem)] font-bold mb-8 reveal">Learning Resources</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-lg font-semibold mb-2 text-accent-1">📚 GitHub Copilot Documentation</h3>
+                    <p class="text-sm text-text-secondary">docs.github.com/copilot - Official guides and best practices</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-lg font-semibold mb-2 text-accent-2">🎓 Copilot Prompt Engineering Guide</h3>
+                    <p class="text-sm text-text-secondary">GitHub's official prompt engineering patterns and examples</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-lg font-semibold mb-2 text-accent-3">💡 VSCode Copilot Best Practices</h3>
+                    <p class="text-sm text-text-secondary">code.visualstudio.com/docs/copilot - Integration tips and workflows</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <h3 class="text-lg font-semibold mb-2 text-purple-400">🔧 Custom Instructions Repository</h3>
+                    <p class="text-sm text-text-secondary">Community-contributed copilot-instructions.md templates for different tech stacks</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 22: Thank You -->
+    <div class="slide slide-21" data-slide="21">
+        <div class="gradient-mesh">
+            <div class="blob" style="width: 500px; height: 500px; top: -100px; right: -100px; background: var(--color-accent-1); opacity: 0.15;"></div>
+            <div class="blob" style="width: 300px; height: 300px; bottom: -80px; left: -60px; background: var(--color-accent-2); opacity: 0.12;"></div>
+            <div class="blob" style="width: 200px; height: 200px; top: 40%; left: 15%; background: var(--color-accent-3); opacity: 0.1;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position: absolute; inset: 0; z-index: 1;"></canvas>
+        <div class="content text-center">
+            <div class="text-[120px] mb-5 animate-[float_3s_ease-in-out_infinite]">🚀</div>
+            <h1 class="font-display text-[clamp(2.5rem,6vw,5rem)] font-black bg-linear-to-br from-accent-1 via-accent-2 to-accent-1 bg-clip-text text-transparent tracking-tight mb-4 reveal">Thank You!</h1>
+            <p class="text-[clamp(0.9rem,1.5vw,1.4rem)] font-light text-text-muted tracking-[6px] uppercase reveal">Questions?</p>
+            <p class="text-sm mt-8 text-text-muted reveal">Let's maximize AI to build better software, faster</p>
+        </div>
+    </div>
+</div>
+
+<div class="nav-controls">
+    <button class="nav-btn" onclick="changeSlide(-1)">&#8249;</button>
+    <div class="slide-dots" id="dots"></div>
+    <button class="nav-btn" onclick="changeSlide(1)">&#8250;</button>
+    <span class="slide-counter" id="counter">1 / 22</span>
+</div>
+
+<script>
+    let current = 1;
+    const total = document.querySelectorAll('.slide').length;
+    const dotsContainer = document.getElementById('dots');
+    const counter = document.getElementById('counter');
+    for (let i = 1; i <= total; i++) { const dot = document.createElement('div'); dot.className = 'dot' + (i === 1 ? ' active' : ''); dot.onclick = () => goToSlide(i); dotsContainer.appendChild(dot); }
+    function goToSlide(n) {
+        const prev = document.querySelector('.slide.active');
+        const next = document.querySelector(`.slide[data-slide="${n}"]`);
+        if (prev) prev.classList.remove('active');
+        if (next) { next.classList.add('active'); try { animateSlide(next); } catch(e) { console.warn('Motion unavailable:', e); } }
+        current = n; updateNav();
+    }
+    function changeSlide(dir) { let next = current + dir; if (next < 1) next = total; if (next > total) next = 1; goToSlide(next); }
+    function updateNav() { document.querySelectorAll('.dot').forEach((d, i) => { d.classList.toggle('active', i + 1 === current); }); counter.textContent = current + ' / ' + total; }
+    document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); } });
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', (e) => { const diff = touchStartX - e.changedTouches[0].clientX; if (Math.abs(diff) > 50) changeSlide(diff > 0 ? 1 : -1); });
+
+    function animateSlide(slide) {
+        slide.querySelectorAll('.reveal').forEach((el, i) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            Motion.animate(el,
+                { opacity: 1, transform: 'translateY(0px)' },
+                { type: 'spring', stiffness: 200, damping: 30, delay: i * 0.12 }
+            );
+        });
+        animateSlideEffects(slide);
+    }
+
+    function animateSlideEffects(slide) {
+        slide.querySelectorAll('[data-count]:not(.counted)').forEach(el => {
+            el.classList.add('counted');
+            const target = parseInt(el.dataset.count);
+            const suffix = el.dataset.suffix || '', prefix = el.dataset.prefix || '';
+            let cur = 0; const step = target / 40;
+            const timer = setInterval(() => { cur += step; if (cur >= target) { cur = target; clearInterval(timer); } el.textContent = prefix + Math.round(cur).toLocaleString() + suffix; }, 30);
+        });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        const spotlight = document.querySelector('.mouse-spotlight');
+        if (spotlight) {
+            const rgb = getComputedStyle(document.documentElement).getPropertyValue('--glow-color-rgb').trim() || '56,189,248';
+            spotlight.style.background = `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(${rgb}, 0.06), transparent 40%)`;
+        }
+    });
+
+    window.initParticles = function(canvas, options) {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        const interactive = options.interactive !== false;
+        const count = options.count || (interactive ? 55 : 18);
+        let mx = -1000, my = -1000;
+        const rgb = getComputedStyle(document.documentElement).getPropertyValue('--glow-color-rgb').trim() || '56,189,248';
+        const [r, g, b] = rgb.split(',').map(Number);
+        const particles = Array.from({ length: count }, () => ({
+            x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+            size: Math.random() * 2.5 + 0.8, alpha: Math.random() * 0.35 + 0.1
+        }));
+        if (interactive) {
+            canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); mx = e.clientX - rect.left; my = e.clientY - rect.top; });
+            canvas.addEventListener('mouseleave', () => { mx = -1000; my = -1000; });
+        }
+        (function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                if (interactive) { const dx = p.x - mx, dy = p.y - my, dist = Math.sqrt(dx * dx + dy * dy); if (dist < 120) { const force = (120 - dist) / 120 * 2; p.vx += (dx / dist) * force * 0.1; p.vy += (dy / dist) * force * 0.1; } }
+                p.vx *= 0.98; p.vy *= 0.98; p.x += p.vx; p.y += p.vy;
+                if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+                if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${r},${g},${b},${p.alpha})`; ctx.fill();
+            });
+            requestAnimationFrame(animate);
+        })();
+    };
+    document.querySelectorAll('.particle-canvas').forEach(c => window.initParticles(c, { interactive: true, count: 55 }));
+    document.querySelectorAll('.particle-canvas-ambient').forEach(c => window.initParticles(c, { interactive: false, count: 18 }));
+
+    animateSlide(document.querySelector('.slide.active'));
+</script>
+
+</body>
+</html>
